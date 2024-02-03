@@ -17,23 +17,26 @@ WallPaper::UserInterface::WallPaperUI::WallPaperUI( const QIcon& Icon ) :
     TrayIcon( new QSystemTrayIcon( ) ),
     Menu( new QMenu( ) )
 {
-    // 初始化右键菜单
+    /* 初始化右键菜单 */
     this->InitMenu( );
 
-    // 初始化系统托盘
+    /* 初始化系统托盘 */
     this->TrayIcon->setIcon( Icon );
     this->TrayIcon->setToolTip( WINDOW_TITLE );
     this->TrayIcon->show( );
     this->TrayIcon->setContextMenu( this->Menu );
 
-    // 监听屏幕变化事件
+    /* 监听屏幕变化事件 */
     connect(QApplication::primaryScreen( ), &QScreen::geometryChanged, this, &WallPaperUI::RefreshScreenSize);
 }
 
 WallPaper::UserInterface::WallPaperUI::~WallPaperUI( VOID )
 {
-    // 显示我们的桌面
+    /* 显示我们的桌面 */
     ShowDesktop( );
+
+    /* 不管怎么样，我觉得我们应该显示图标 */
+    ShowDesktopIcons();
 
     delete this->Menu;
     delete this->Close;
@@ -41,16 +44,15 @@ WallPaper::UserInterface::WallPaperUI::~WallPaperUI( VOID )
     delete this->Refresh;
     delete this->TrayIcon;
     delete this->EngineView;
+    delete this->RepairTimer;
 }
 
 VOID WallPaper::UserInterface::WallPaperUI::RepairParentWindow( VOID )
 {
-    QTimer* timer = { };
+    this->RepairTimer = new QTimer( );
+    this->RepairTimer->setInterval( 5000 );
 
-    timer = new QTimer( );
-    timer->setInterval( 5000 );
-
-    connect( timer, &QTimer::timeout, [=] {
+    connect( this->RepairTimer, &QTimer::timeout, [=] {
         if ( not this->EngineView )
         {
             return;
@@ -65,7 +67,7 @@ VOID WallPaper::UserInterface::WallPaperUI::RepairParentWindow( VOID )
         }
     });
 
-    timer->start( );
+    this->RepairTimer->start( );
 }
 
 VOID WallPaper::UserInterface::WallPaperUI::InstallWallPaper( VOID )
@@ -74,7 +76,7 @@ VOID WallPaper::UserInterface::WallPaperUI::InstallWallPaper( VOID )
     QJsonObject   JsonObject    = { };
     QJsonDocument JsonDocument  = { };
 
-    // 读取我们的配置文件
+    /* 读取我们的配置文件 */
     if ( not WallPaper::Util::Functions::FileExists( CONFIG_FILE_NAME ) )
     {
         ResetWallPaper( ); return;
@@ -84,7 +86,7 @@ VOID WallPaper::UserInterface::WallPaperUI::InstallWallPaper( VOID )
     JsonDocument = QJsonDocument::fromJson( Context.toUtf8( ) );
     JsonObject   = JsonDocument.object( );
 
-    // 如果没有我们的键，或者文件不存在
+    /* 如果没有我们的键，或者文件不存在 */
     if ( not JsonObject.contains( CURRENT_DESKTOP_WALLPAPER ) || not WallPaper::Util::Functions::FileExists( JsonObject[ CURRENT_DESKTOP_WALLPAPER ].toString( ) ) )
     {
         ResetWallPaper( ); return;
@@ -113,14 +115,14 @@ VOID WallPaper::UserInterface::WallPaperUI::ResetWallPaper( VOID )
         this->CurrentFile = Path;
     }
 
-    // 显示html，并且刷新显示
+    /* 显示html，并且刷新显示 */
     WebEngineViewReLoad( WallPaper::Util::Functions::ReadFileAllBytesAsQString( Path ) );
 
-    // 刷新我们的配置文件
+    /* 刷新我们的配置文件 */
     JsonObject[ CURRENT_DESKTOP_WALLPAPER ] = Path;
     JsonDocument.setObject( JsonObject );
 
-    // 写入配置文件
+    /* 写入配置文件 */
     WallPaper::Util::Functions::SaveFile( CONFIG_FILE_NAME, JsonDocument.toJson( ) );
 }
 
@@ -144,11 +146,14 @@ VOID WallPaper::UserInterface::WallPaperUI::InitMenu( VOID )
             "}"
     );
 
-    this->Close   = new QAction( QString( "Exit" ), this );
-    this->Refresh = new QAction( QString( "Refresh" ), this );
-    this->Reset   = new QAction( QString( "Reset WallPaper" ), this );
-    this->Start   = new QAction( QString( "Start" ), this );
-    this->Stop    = new QAction( QString( "Stop" ), this );
+    this->Icon      = this->Menu->addMenu( QString( "Desktop Icons" ) );
+    this->Close     = new QAction( QString( "Exit" ), this );
+    this->Refresh   = new QAction( QString( "Refresh" ), this );
+    this->Reset     = new QAction( QString( "Reset WallPaper" ), this );
+    this->Start     = new QAction( QString( "Start" ), this );
+    this->Stop      = new QAction( QString( "Stop" ), this );
+    this->HideIcons = new QAction( QString( "Hide Desktop Icons" ), this );
+    this->ShowIcons = new QAction( QString( "Show Desktop Icons" ), this );
 
     this->Menu->addAction( this->Start );
     this->Menu->addAction( this->Stop );
@@ -158,28 +163,44 @@ VOID WallPaper::UserInterface::WallPaperUI::InitMenu( VOID )
     this->Menu->addAction( this->Refresh );
     this->Menu->addSeparator( );
     this->Menu->addAction( this->Close );
+    this->Icon->addAction( this->ShowIcons );
+    this->Icon->addSeparator( );
+    this->Icon->addAction( this->HideIcons );
 
-    connect( this->Reset,   &QAction::triggered, this, &WallPaperUI::ResetWallPaperAction );
-    connect( this->Refresh, &QAction::triggered, this, &WallPaperUI::RefreshAction );
-    connect( this->Close,   &QAction::triggered, this, &WallPaperUI::CloseAction );
-    connect( this->Start,   &QAction::triggered, this, &WallPaperUI::StartAction );
-    connect( this->Stop,    &QAction::triggered, this, &WallPaperUI::StopAction );
+    connect( this->Reset,     &QAction::triggered, this, &WallPaperUI::ResetWallPaperAction );
+    connect( this->Refresh,   &QAction::triggered, this, &WallPaperUI::RefreshAction );
+    connect( this->Close,     &QAction::triggered, this, &WallPaperUI::CloseAction );
+    connect( this->Start,     &QAction::triggered, this, &WallPaperUI::StartAction );
+    connect( this->Stop,      &QAction::triggered, this, &WallPaperUI::StopAction );
+    connect( this->ShowIcons, &QAction::triggered, this, &WallPaperUI::ShowDesktopIcons );
+    connect( this->HideIcons, &QAction::triggered, this, &WallPaperUI::HideDesktopIcons );
+}
+
+VOID WallPaper::UserInterface::WallPaperUI::HideDesktopIcons( VOID )
+{
+    ShowWindow( WallPaper::Util::Functions::GetSysListView32( ), SW_HIDE );
+}
+
+VOID WallPaper::UserInterface::WallPaperUI::ShowDesktopIcons( VOID )
+{
+    ShowWindow( WallPaper::Util::Functions::GetSysListView32( ), SW_SHOW );
 }
 
 VOID WallPaper::UserInterface::WallPaperUI::StartAction( VOID )
 {
-    // 隐藏我们的桌面
+    /* 隐藏我们的桌面 */
     HideDesktop( );
 
-    // 刷新并且显示我们的web界面
+    /* 刷新并且显示我们的web界面 */
     this->RefreshAction( );
 }
 
 VOID WallPaper::UserInterface::WallPaperUI::StopAction( VOID )
 {
-    // 显示桌面
+    /* 显示桌面 */
     ShowDesktop();
 
+    /* 释放我们的web舞台 */
     this->FreeWebEngineView( );
 }
 
@@ -190,29 +211,29 @@ VOID WallPaper::UserInterface::WallPaperUI::FreeWebEngineView( VOID )
         return;
     }
 
-    // 关闭我们的web舞台
+    /* 关闭我们的web舞台 */
     this->EngineView->hide();
     this->EngineView->close();
 
-    // 清理实例
+    /* 清理实例 */
     delete( this->EngineView );
 
-    // 我们需要将我们的指针指向空 [ 防止出现野指针 ]
+    /* 我们需要将我们的指针指向空 [ 防止出现野指针 ] */
     this->EngineView = nullptr;
 }
 
 VOID WallPaper::UserInterface::WallPaperUI::HideDesktop( VOID )
 {
-    // 显示我们的桌面
-    ShowWindow( WallPaper::Util::HandleWorkerW, SW_HIDE );
+    /* 显示我们的桌面 */
+    ShowWindow( WallPaper::Util::Functions::GetWorkerW(), SW_HIDE );
 }
 
 VOID WallPaper::UserInterface::WallPaperUI::ShowDesktop( VOID )
 {
-    // 显示我们的桌面
-    ShowWindow( WallPaper::Util::HandleWorkerW, SW_SHOW );
+    /* 显示我们的桌面 */
+    ShowWindow( WallPaper::Util::Functions::GetWorkerW(), SW_SHOW );
 
-    // 刷新壁纸
+    /* 刷新壁纸 */
     SystemParametersInfo( SPI_SETDESKWALLPAPER, 0, nullptr, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE );
 }
 
@@ -239,6 +260,9 @@ VOID WallPaper::UserInterface::WallPaperUI::CloseAction( VOID )
     this->EngineView->hide( );
     this->EngineView->close( );
 
+    /* 关闭我们的计时器 */
+    this->RepairTimer->stop();
+
     /* 调用退出事件 */
     QCoreApplication::exit( );
 }
@@ -247,7 +271,7 @@ VOID WallPaper::UserInterface::WallPaperUI::WebEngineViewReLoad( const QString& 
 {
     QWebEngineView* WebEngineView = nullptr;
 
-    // 我们重新创建一个舞台
+    /* 我们重新创建一个舞台 */
     WebEngineView = new QWebEngineView( );
     WebEngineView->setWindowTitle( WALLPAPER_CLASS_NAME );
     WebEngineView->setWindowFlags( Qt::FramelessWindowHint );
@@ -283,9 +307,6 @@ VOID WallPaper::UserInterface::WallPaperUI::RefreshScreenSize( const QRect& rect
 VOID WallPaper::WallPaperMainWindowStart( const QIcon& Icon, QApplication* application )
 {
     WallPaper::UserInterface::WallPaperUI* ui = nullptr;
-
-    /* 初始化我们要隐藏的窗口 */
-    WallPaper::Util::Functions::InitDesktopOrganizationSoftwareList( );
 
     /* 初始化我们的变量 */
     ui = new WallPaper::UserInterface::WallPaperUI( Icon );

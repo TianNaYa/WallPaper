@@ -38,7 +38,8 @@ namespace WallPaper
         {
 
         private:
-            static BOOL CALLBACK EnumWindowsCallBack( _In_ HWND hwnd, _In_ LPARAM lParam );
+            static BOOL CALLBACK EnumWindowsCallBackWorkerW( _In_ HWND hwnd, _In_ LPARAM lParam );
+            static BOOL CALLBACK EnumWindowsCallBackSysListView32( _In_ HWND hwnd, _In_ LPARAM lParam );
 
         public:
             static BOOL    SetWallPaper( WId panel );
@@ -46,12 +47,10 @@ namespace WallPaper
             static QString DialogChooseFile( QWidget* parent );
             static BOOL    FileExists( const QString& path );
             static VOID    SaveFile( const QString& path, const QByteArray& data );
-            static VOID    InitDesktopOrganizationSoftwareList( VOID );
+            static HWND    GetSysListView32( VOID );
+            static HWND    GetWorkerW( VOID );
 
         };
-
-        static HWND            HandleWorkerW;
-        static QList<QString>* DesktopOrganizationSoftwareList;
     }
 
     namespace UserInterface
@@ -64,7 +63,9 @@ namespace WallPaper
             QSystemTrayIcon* TrayIcon      = { };
             QWebEngineView*  EngineView    = { };
             QMenu*           Menu          = { };
+            QMenu*           Icon          = { };
             QString          CurrentFile   = { };
+            QTimer*          RepairTimer   = { };
 
         private:
             QAction*         Close         = { };
@@ -72,6 +73,8 @@ namespace WallPaper
             QAction*         Refresh       = { };
             QAction*         Start         = { };
             QAction*         Stop          = { };
+            QAction*         HideIcons     = { };
+            QAction*         ShowIcons     = { };
 
         public slots:
             void CloseAction( );
@@ -80,6 +83,10 @@ namespace WallPaper
             void StartAction( );
             void StopAction( );
             void RefreshScreenSize( const QRect& newGeometry );
+
+        public slots:
+            static void HideDesktopIcons( );
+            static void ShowDesktopIcons( );
 
         public:
             WallPaperUI( const QIcon& Icon );
