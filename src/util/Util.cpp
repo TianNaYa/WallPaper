@@ -50,18 +50,18 @@ BOOL WallPaper::Util::Functions::EnumWindowsCallBack( _In_ HWND hwnd, _In_ LPARA
 
 BOOL WallPaper::Util::Functions::SetWallPaper( WId panel )
 {
-    HWND parent = FindWindowA( "Progman", "Program Manager" );
+    HWND HandleProgman = FindWindowA( "Progman", "Program Manager" );
 
-    if ( not parent )
+    if ( not HandleProgman )
     {
         return FALSE;
     }
 
-    SendMessageTimeoutA( parent, 0x0000052c, 0 , 0, SMTO_NORMAL, 10000, nullptr );
+    SendMessageTimeoutA( HandleProgman, 0x0000052c, 0 , 0, SMTO_NORMAL, 10000, nullptr );
 
     EnumWindows( EnumWindowsCallBack, NULL );
 
-    SetParent((HWND)panel, parent );
+    SetParent((HWND)panel, HandleProgman );
 
     return TRUE;
 }

@@ -19,11 +19,15 @@
 #endif
 
 #ifndef CONFIG_FILE_NAME
-#define CONFIG_FILE_NAME          ".wallpaper.json"
+#define CONFIG_FILE_NAME            ".wallpaper.json"
 #endif
 
 #ifndef CURRENT_DESKTOP_WALLPAPER
-#define CURRENT_DESKTOP_WALLPAPER "Current_WallPaper"
+#define CURRENT_DESKTOP_WALLPAPER   "Current_WallPaper"
+#endif
+
+#ifndef WALLPAPER_CLASS_NAME
+#define WALLPAPER_CLASS_NAME        "Desktop_WallPaper_Windows_Title"
 #endif
 
 namespace WallPaper
@@ -66,11 +70,15 @@ namespace WallPaper
             QAction*         Close         = { };
             QAction*         Reset         = { };
             QAction*         Refresh       = { };
+            QAction*         Start         = { };
+            QAction*         Stop          = { };
 
         public slots:
             void CloseAction( );
-            void ResetWallPaperAction();
+            void ResetWallPaperAction( );
             void RefreshAction( );
+            void StartAction( );
+            void StopAction( );
             void RefreshScreenSize( const QRect& newGeometry );
 
         public:
@@ -82,7 +90,14 @@ namespace WallPaper
             VOID    ResetWallPaper( );
             VOID    InitMenu( );
             VOID    WebEngineViewReLoad( const QString& html );
-            QString GetCurrentDesktopFile( VOID );
+            VOID    RepairParentWindow( VOID );
+
+        private:
+            VOID FreeWebEngineView( VOID );
+
+        private:
+            static VOID HideDesktop( VOID );
+            static VOID ShowDesktop( VOID );
 
         };
     }

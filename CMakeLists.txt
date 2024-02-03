@@ -28,6 +28,7 @@ find_package(Qt6 COMPONENTS
 add_executable(wallpaper src/entry/main.cpp
         src/entry/WallPaper.cpp
         src/util/Util.cpp
+        src/icon.rc
         ${HEADERS_DIR}
 )
 
